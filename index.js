@@ -32,13 +32,18 @@ async function run() {
 const classCollection = client.db('language').collection('classes');
 const instructorCollection = client.db('language').collection('instructors');
 
+// jwt token apis
+app.post('/jwt', (req, res) => {
+  const user = req.body;
+  const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
 
+  res.send({ token })
+})
 
 // class releted apis
 
 app.get('/classes', async(req, res) => {
   const results = await classCollection.find().toArray();
-  console.log(results);
   res.send(results)
 })
 
@@ -53,10 +58,10 @@ app.get('/classes', async(req, res) => {
 
 // instructors apis
 
-// app.get('/instructors', async(req, res) => {
-//   const result = await instructorCollection.find().toArray();
-//   res.send(result)
-// })
+app.get('/instructors', async(req, res) => {
+  const result = await instructorCollection.find().toArray();
+  res.send(result)
+})
 
 // app.post('')
 
