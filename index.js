@@ -174,9 +174,9 @@ async function run() {
   
     // class releted apis
 
-    app.get('/classes', async (req, res) => {
+    app.get('/carts', async (req, res) => {
       const email = req.query.email;
-
+console.log(email);
       if (!email) {
         res.send([]);
       }
@@ -187,7 +187,7 @@ async function run() {
       // }
 
       const query = { email: email };
-      const result = await classCollection.find(query).toArray();
+      const result = await cartCollection.find(query).toArray();
       res.send(result);
     });
     
