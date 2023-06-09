@@ -52,7 +52,7 @@ async function run() {
     // Connect the client to the server (optional starting in v4.7)
     await client.connect();
     // const usersCollection = client.db("language").collection("users");
-    // const cartCollection = client.db("bistroDb").collection("carts");
+    const cartCollection = client.db("language").collection("carts");
     const classCollection = client.db("language").collection("classes");
     const instructorCollection = client
       .db("language")
@@ -138,7 +138,8 @@ async function run() {
 
  */
         // cart collection apis
-      /*   app.get('/carts', verifyJWT, async (req, res) => {
+        
+/*         app.get('/carts', async (req, res) => {
           const email = req.query.email;
     
           if (!email) {
@@ -155,7 +156,7 @@ async function run() {
           res.send(result);
         });
     
-        app.post('/carts', async (req, res) => {
+        app.get('/carts', async (req, res) => {
           const item = req.body;
           const result = await cartCollection.insertOne(item);
           res.send(result);
@@ -167,22 +168,29 @@ async function run() {
           const result = await cartCollection.deleteOne(query);
           res.send(result);
         })
-     */
+    */
 
 
-
+  
     // class releted apis
-
+    
+   
     app.get("/classes", async (req, res) => {
       const results = await classCollection.find().toArray();
       res.send(results);
     });
 
-    // app.post('/classes', async(req, res)=>{
-    //   const newClass = req.body;
-    //   const result = await classCollection.insertOne(newClass)
-    //   res.send(result)
-    // })
+    app.post('/classes', async(req, res)=>{
+      const newClass = req.body;
+      const result = await classCollection.insertOne(newClass)
+      res.send(result)
+    })
+
+    
+
+
+
+
 
     // instructors apis
 
