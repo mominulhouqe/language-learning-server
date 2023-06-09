@@ -176,7 +176,6 @@ async function run() {
 
     app.get('/carts', async (req, res) => {
       const email = req.query.email;
-console.log(email);
       if (!email) {
         res.send([]);
       }
@@ -188,10 +187,19 @@ console.log(email);
 
       const query = { email: email };
       const result = await cartCollection.find(query).toArray();
+      console.log(result);
       res.send(result);
     });
     
    
+    app.post('/carts', async (req, res) => {
+      const item = req.body;
+      const result = await cartCollection.insertOne(item);
+      console.log(result);
+      res.send(result);
+    })
+
+
     app.get("/classes", async (req, res) => {
       const results = await classCollection.find().toArray();
       res.send(results);
