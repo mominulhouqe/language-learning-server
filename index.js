@@ -35,7 +35,7 @@ app.get("/", (req, res) => {
   res.send("Language Server is Running!");
 });
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.34btmna.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -172,7 +172,7 @@ async function run() {
 
 
   
-    // class releted apis
+    // selected carts apis releted apis
 
     app.get('/carts', async (req, res) => {
       const email = req.query.email;
@@ -199,7 +199,15 @@ async function run() {
       res.send(result);
     })
 
+    // deleted cart from db
+    app.delete('/carts/:id', async(req, res ) =>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const results = await cartCollection.deleteOne(query);
+      res.send(results)
+    })
 
+    // class collections apis
     app.get("/classes", async (req, res) => {
       const results = await classCollection.find().toArray();
       res.send(results);
