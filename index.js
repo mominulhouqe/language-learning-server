@@ -50,7 +50,7 @@ async function run() {
   try {
     // Connect the client to the server (optional starting in v4.7)
     await client.connect();
-    // const usersCollection = client.db("language").collection("users");
+    const usersCollection = client.db("language").collection("users");
     const cartCollection = client.db("language").collection("carts");
     const classCollection = client.db("language").collection("classes");
     const instructorCollection = client
@@ -58,12 +58,62 @@ async function run() {
       .collection("instructors");
 
 
+
+  // jwt token apis
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.DB_ACCESS_TOKEN, {
+        expiresIn: "1h",
+      });
+  
+      res.send({ token });
+    });
+
+  
+
     // users releted apis
     app.get("/users", async (req, res) => {
-      const result = await userCollection.find().toArray();
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+// user post
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email }
+      const existingUser = await usersCollection.findOne(query);
+
+      if (existingUser) {
+        return res.send({ message: 'user already exists' })
+      }
+
+      const result = await usersCollection.insertOne(user);
+  
       res.send(result);
     });
 
+    app.get('/user/admin/:email', async(req, res ) =>{
+      
+      const email = req.params.email;
+
+      const query = {email:email}
+      const user = await usersCollection.findOne(query);
+      const result = {admin:user?.role === 'admin'};
+      res.send(result)
+
+    })
+
+    // make admin
+    app.patch('/users/admin/:id', async(req, res) =>{
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const updatedDoc = {
+        $set:{
+          role: 'admin'
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+    })
 
 
     // selected carts apis releted apis
