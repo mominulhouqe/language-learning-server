@@ -9,14 +9,14 @@ const jwt = require("jsonwebtoken");
 app.use(cors());
 app.use(express.json());
 
- const verifyJWT = (req, res, next) => {
+const verifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
   if (!authorization) {
     return res
       .status(401)
       .send({ error: true, message: "unauthorized access" });
   }
-  // bearer token
+
   const token = authorization.split(" ")[1];
 
   jwt.verify(token, process.env.DB_ACCESS_TOKEN_SECRET, (err, decoded) => {
@@ -25,10 +25,11 @@ app.use(express.json());
         .status(401)
         .send({ error: true, message: "unauthorized access" });
     }
-    req.decoded = decoded;
-    next();
+
+    req.decoded = decoded; // Attach the decoded object to the request
+    next(); // Call next() to proceed to the next middleware or route handler
   });
-}; 
+};
 
 app.get("/", (req, res) => {
   res.send("Language Server is Running!");
@@ -57,64 +58,67 @@ async function run() {
       .db("language")
       .collection("instructors");
 
-
-
-  // jwt token apis
+    // jwt token apis
     app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.DB_ACCESS_TOKEN, {
         expiresIn: "1h",
       });
-  
+
       res.send({ token });
     });
-
-  
 
     // users releted apis
     app.get("/users", async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
-// user post
-    app.post('/users', async (req, res) => {
+    // user post
+    app.post("/users", async (req, res) => {
       const user = req.body;
-      const query = { email: user.email }
+      const query = { email: user.email };
       const existingUser = await usersCollection.findOne(query);
 
       if (existingUser) {
-        return res.send({ message: 'user already exists' })
+        return res.send({ message: "user already exists" });
       }
 
       const result = await usersCollection.insertOne(user);
-  
+
       res.send(result);
     });
 
-    app.get('/user/admin/:email', async(req, res ) =>{
-      
+    // security layer:
+    // cheack same email
+    // check admin
+
+    // user/admin/:email route
+    app.get("/user/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
+      const decodedEmail = req.decoded?.email; // Use optional chaining to handle undefined case
 
-      const query = {email:email}
+      if (decodedEmail !== email) {
+        return res.send({ admin: false });
+      }
+
+      const query = { email: email };
       const user = await usersCollection.findOne(query);
-      const result = {admin:user?.role === 'admin'};
-      res.send(result)
-
-    })
+      const result = { admin: user?.role === "admin" };
+      res.send(result);
+    });
 
     // make admin
-    app.patch('/users/admin/:id', async(req, res) =>{
+    app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
-        $set:{
-          role: 'admin'
+        $set: {
+          role: "admin",
         },
       };
       const result = await usersCollection.updateOne(filter, updatedDoc);
-      res.send(result)
-    })
-
+      res.send(result);
+    });
 
     // selected carts apis releted apis
 
@@ -124,10 +128,12 @@ async function run() {
         res.send([]);
       }
 
-      const decodedEmail = req.decoded.email;
-      if (email !== decodedEmail) {
-        return res.status(403).send({ error: true, message: 'forbidden access' })
-      }
+      // const decodedEmail = req.decoded.email;
+      // if (email !== decodedEmail) {
+      //   return res
+      //     .status(403)
+      //     .send({ error: true, message: "forbidden access" });
+      // }
       const query = { email: email };
       const result = await cartCollection.find(query).toArray();
 
@@ -189,21 +195,18 @@ app.listen(port, () => {
   console.log(`Language server on port ${port}`);
 });
 
+// jwt token apis
+// app.post("/jwt", (req, res) => {
+//   const user = req.body;
+//   const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
+//     expiresIn: "1h",
+//   });
+//   console.log(token);
+//   res.send({ token });
+// });
 
-
-
-    // jwt token apis
-    // app.post("/jwt", (req, res) => {
-    //   const user = req.body;
-    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
-    //     expiresIn: "1h",
-    //   });
-    //   console.log(token);
-    //   res.send({ token });
-    // });
-
-    // Warning: use verifyJWT before using verifyAdmin
-    /*     const verifyAdmin = async (req, res, next) => {
+// Warning: use verifyJWT before using verifyAdmin
+/*     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email }
       const user = await usersCollection.findOne(query);
@@ -213,15 +216,15 @@ app.listen(port, () => {
       next();
     } */
 
-    /**
-     * 0. do not show secure links to those who should not see the links
-     * 1. use jwt token: verifyJWT
-     * 2. use verifyAdmin middleware
-     */
+/**
+ * 0. do not show secure links to those who should not see the links
+ * 1. use jwt token: verifyJWT
+ * 2. use verifyAdmin middleware
+ */
 
-    // users related apis
+// users related apis
 
-    /*     app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
+/*     app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -239,10 +242,10 @@ app.listen(port, () => {
       res.send(result);
     });
  */
-    // security layer: verifyJWT
-    // email same
-    // check admin
-    /*     app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+// security layer: verifyJWT
+// email same
+// check admin
+/*     app.get('/users/admin/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
@@ -255,7 +258,7 @@ app.listen(port, () => {
       res.send(result);
     }) */
 
-    /*     app.patch('/users/admin/:id', async (req, res) => {
+/*     app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
       console.log(id);
       const filter = { _id: new ObjectId(id) };
@@ -271,9 +274,9 @@ app.listen(port, () => {
     })
 
  */
-    // cart collection apis
+// cart collection apis
 
-    /*         app.get('/carts', async (req, res) => {
+/*         app.get('/carts', async (req, res) => {
           const email = req.query.email;
     
           if (!email) {
