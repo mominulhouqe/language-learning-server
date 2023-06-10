@@ -9,7 +9,7 @@ const jwt = require("jsonwebtoken");
 app.use(cors());
 app.use(express.json());
 
-/* const verifyJWT = (req, res, next) => {
+ const verifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
   if (!authorization) {
     return res
@@ -19,7 +19,7 @@ app.use(express.json());
   // bearer token
   const token = authorization.split(" ")[1];
 
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+  jwt.verify(token, process.env.DB_ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
       return res
         .status(401)
@@ -28,7 +28,7 @@ app.use(express.json());
     req.decoded = decoded;
     next();
   });
-}; */
+}; 
 
 app.get("/", (req, res) => {
   res.send("Language Server is Running!");
@@ -124,10 +124,10 @@ async function run() {
         res.send([]);
       }
 
-      // const decodedEmail = req.decoded.email;
-      // if (email !== decodedEmail) {
-      //   return res.status(403).send({ error: true, message: 'forbidden access' })
-      // }
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res.status(403).send({ error: true, message: 'forbidden access' })
+      }
       const query = { email: email };
       const result = await cartCollection.find(query).toArray();
 
