@@ -30,7 +30,6 @@ app.use(express.json());
   });
 }; */
 
-
 app.get("/", (req, res) => {
   res.send("Language Server is Running!");
 });
@@ -58,6 +57,91 @@ async function run() {
       .db("language")
       .collection("instructors");
 
+
+    // users releted apis
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+
+
+    // selected carts apis releted apis
+
+    app.get("/carts", async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        res.send([]);
+      }
+
+      // const decodedEmail = req.decoded.email;
+      // if (email !== decodedEmail) {
+      //   return res.status(403).send({ error: true, message: 'forbidden access' })
+      // }
+      const query = { email: email };
+      const result = await cartCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
+    app.post("/carts", async (req, res) => {
+      const item = req.body;
+      const result = await cartCollection.insertOne(item);
+
+      res.send(result);
+    });
+
+    // deleted cart from db
+    app.delete("/carts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const results = await cartCollection.deleteOne(query);
+      console.log(results);
+      res.send(results);
+    });
+
+    // class collections apis
+    app.get("/classes", async (req, res) => {
+      const results = await classCollection.find().toArray();
+      res.send(results);
+    });
+
+    app.post("/classes", async (req, res) => {
+      const newClass = req.body;
+      const result = await classCollection.insertOne(newClass);
+      res.send(result);
+    });
+
+    // instructors apis
+
+    app.get("/instructors", async (req, res) => {
+      const result = await instructorCollection.find().toArray();
+      res.send(result);
+    });
+
+    // app.post('')
+
+    // Send a ping to confirm a successful connection
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
+  } finally {
+    // Ensures that the client will close when you finish/error
+    // await client.close();
+  }
+}
+
+run().catch(console.dir);
+
+app.listen(port, () => {
+  console.log(`Language server on port ${port}`);
+});
+
+
+
+
     // jwt token apis
     // app.post("/jwt", (req, res) => {
     //   const user = req.body;
@@ -68,9 +152,8 @@ async function run() {
     //   res.send({ token });
     // });
 
-
     // Warning: use verifyJWT before using verifyAdmin
-/*     const verifyAdmin = async (req, res, next) => {
+    /*     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email }
       const user = await usersCollection.findOne(query);
@@ -79,15 +162,16 @@ async function run() {
       }
       next();
     } */
-    
+
     /**
      * 0. do not show secure links to those who should not see the links
      * 1. use jwt token: verifyJWT
      * 2. use verifyAdmin middleware
-    */
+     */
 
     // users related apis
-/*     app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
+
+    /*     app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -108,7 +192,7 @@ async function run() {
     // security layer: verifyJWT
     // email same
     // check admin
-/*     app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+    /*     app.get('/users/admin/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
@@ -121,7 +205,7 @@ async function run() {
       res.send(result);
     }) */
 
-/*     app.patch('/users/admin/:id', async (req, res) => {
+    /*     app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
       console.log(id);
       const filter = { _id: new ObjectId(id) };
@@ -137,9 +221,9 @@ async function run() {
     })
 
  */
-        // cart collection apis
-        
-/*         app.get('/carts', async (req, res) => {
+    // cart collection apis
+
+    /*         app.get('/carts', async (req, res) => {
           const email = req.query.email;
     
           if (!email) {
@@ -169,84 +253,3 @@ async function run() {
           res.send(result);
         })
     */
-
-
-  
-    // selected carts apis releted apis
-
-    app.get('/carts', async (req, res) => {
-      const email = req.query.email;
-      if (!email) {
-        res.send([]);
-      }
-
-      // const decodedEmail = req.decoded.email;
-      // if (email !== decodedEmail) {
-      //   return res.status(403).send({ error: true, message: 'forbidden access' })
-      // }
-      const query = { email: email };
-      const result = await cartCollection.find(query).toArray();
-
-      res.send(result);
-    });
-    
-   
-    app.post('/carts', async (req, res) => {
-      const item = req.body;
-      const result = await cartCollection.insertOne(item);
-      res.send(result);
-    })
-
-    // deleted cart from db
-    app.delete('/carts/:id', async(req, res ) =>{
-      const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      
-    const results = await cartCollection.deleteOne(query);
-    console.log(results);
-    res.send(results)
-    })
-
-    // class collections apis
-    app.get("/classes", async (req, res) => {
-      const results = await classCollection.find().toArray();
-      res.send(results);
-    });
-
-    app.post('/classes', async(req, res)=>{
-      const newClass = req.body;
-      const result = await classCollection.insertOne(newClass)
-      res.send(result)
-    })
-
-    
-
-
-
-
-
-    // instructors apis
-
-    app.get("/instructors", async (req, res) => {
-      const result = await instructorCollection.find().toArray();
-      res.send(result);
-    });
-
-    // app.post('')
-
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
-  }
-}
-
-run().catch(console.dir);
-
-app.listen(port, () => {
-  console.log(`Language server on port ${port}`);
-});
