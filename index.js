@@ -68,11 +68,25 @@ async function run() {
       res.send({ token });
     });
 
-    // users releted apis
+    // Warning: use verifyJWT before using verifyAdmin
+    // const verifyAdmin = async (req, res, next) => {
+    //   const email = req.decoded.email;
+    //   const query = { email: email };
+    //   const user = await usersCollection.findOne(query);
+    //   if (user?.role !== "admin") {
+    //     return res
+    //       .status(403)
+    //       .send({ error: true, message: "forbidden message" });
+    //   }
+    //   next();
+    // };
+
+    // users related apis
     app.get("/users", async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
+
     // user post
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -89,25 +103,25 @@ async function run() {
     });
 
     // security layer:
-    // cheack same email
+    // check same email
     // check admin
 
     // user/admin/:email route
-    app.get("/user/admin/:email", verifyJWT, async (req, res) => {
+ 
+    app.get('/users/admin/:email', async (req, res) => {
       const email = req.params.email;
-      const decodedEmail = req.decoded?.email; // Use optional chaining to handle undefined case
 
-      if (decodedEmail !== email) {
-        return res.send({ admin: false });
-      }
+      // if (req.decoded.email !== email) {
+      //   res.send({ admin: false })
+      // }
 
-      const query = { email: email };
+      const query = { email: email }
       const user = await usersCollection.findOne(query);
-      const result = { admin: user?.role === "admin" };
+      const result = { admin: user?.role === 'admin' }
       res.send(result);
-    });
+    })
 
-    // make admin
+    // make user admin
     app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -120,7 +134,36 @@ async function run() {
       res.send(result);
     });
 
-    // selected carts apis releted apis
+    // Make a user an Instructor
+
+    // user/instructor/:email route
+    app.get('/users/instructor/:email', async (req, res) => {
+      const email = req.params.email;
+
+      // if (req.decoded.email !== email) {
+      //   res.send({ instructor: false })
+      // }
+
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const result = { instructor: user?.role === 'instructor' }
+      res.send(result);
+    })
+    
+    // make instructor
+    app.patch("/users/instructor/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: "instructor",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    // selected carts related apis
 
     app.get("/carts", async (req, res) => {
       const email = req.query.email;
@@ -139,6 +182,7 @@ async function run() {
 
       res.send(result);
     });
+    // cart post
 
     app.post("/carts", async (req, res) => {
       const item = req.body;
@@ -147,7 +191,7 @@ async function run() {
       res.send(result);
     });
 
-    // deleted cart from db
+    // delete cart from db
     app.delete("/carts/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -169,6 +213,16 @@ async function run() {
       res.send(result);
     });
 
+    // app.get("/classes/:email", async (req, res) => {
+    //   const email = req.query.email;
+    
+    //   const query = email ? { email: email } : {};
+    //   const results = await classCollection.find(query).toArray();
+    // console.log(results);
+    //   res.send(results);
+    // });
+    
+
     // instructors apis
 
     app.get("/instructors", async (req, res) => {
@@ -176,6 +230,11 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/instructors", async (req, res) => {
+      const newClass = req.body;
+      const result = await classCollection.insertOne(newClass);
+      res.send(result);
+    });
     // app.post('')
 
     // Send a ping to confirm a successful connection
@@ -194,6 +253,10 @@ run().catch(console.dir);
 app.listen(port, () => {
   console.log(`Language server on port ${port}`);
 });
+
+
+
+
 
 // jwt token apis
 // app.post("/jwt", (req, res) => {
