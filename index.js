@@ -4,7 +4,7 @@ require("dotenv").config();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 // middleware
 app.use(cors());
 app.use(express.json());
@@ -53,20 +53,33 @@ async function run() {
     await client.connect();
     const usersCollection = client.db("language").collection("users");
     const cartCollection = client.db("language").collection("carts");
+    const paymentCollection = client.db("language").collection("payments");
     const classCollection = client.db("language").collection("classes");
     const instructorCollection = client
       .db("language")
       .collection("instructors");
 
     // jwt token apis
-    app.post("/jwt", (req, res) => {
+    app.post("/jwt", async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.DB_ACCESS_TOKEN, {
         expiresIn: "1h",
       });
-
-      res.send({ token });
+    
+      const query = { email: user.email };
+      const existingUser = await usersCollection.findOne(query);
+    
+      if (!existingUser) {
+        return res.status(404).send({ message: "User not found" });
+      }
+    
+      const isAdmin = existingUser.role === "admin";
+      const isInstructor = existingUser.role === "instructor";
+      const isStudent = existingUser.role === "student";
+    
+      res.send({ token, isAdmin, isInstructor, isStudent });
     });
+    
 
     // Warning: use verifyJWT before using verifyAdmin
     // const verifyAdmin = async (req, res, next) => {
@@ -222,6 +235,89 @@ async function run() {
     //   res.send(results);
     // });
     
+
+     // create payment intent
+     app.post('/create-payment-intent',  async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+
+    // payment related api
+    app.post('/payments',  async (req, res) => {
+      const payment = req.body;
+      const insertResult = await paymentCollection.insertOne(payment);
+
+      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
+      const deleteResult = await cartCollection.deleteMany(query)
+
+      res.send({ insertResult, deleteResult });
+    })
+
+    app.get('/admin-stats',   async (req, res) => {
+      const users = await usersCollection.estimatedDocumentCount();
+      const products = await cartCollection.estimatedDocumentCount();
+      const orders = await paymentCollection.estimatedDocumentCount();
+
+      const payments = await paymentCollection.find().toArray();
+      const revenue = payments.reduce( ( sum, payment) => sum + payment.price, 0)
+
+      res.send({
+        revenue,
+        users,
+        products,
+        orders
+      })
+    })
+
+
+
+    app.get('/order-stats',   async(req, res) =>{
+      const pipeline = [
+        {
+          $lookup: {
+            from: 'menu',
+            localField: 'menuItems',
+            foreignField: '_id',
+            as: 'menuItemsData'
+          }
+        },
+        {
+          $unwind: '$menuItemsData'
+        },
+        {
+          $group: {
+            _id: '$menuItemsData.category',
+            count: { $sum: 1 },
+            total: { $sum: '$menuItemsData.price' }
+          }
+        },
+        {
+          $project: {
+            category: '$_id',
+            count: 1,
+            total: { $round: ['$total', 2] },
+            _id: 0
+          }
+        }
+      ];
+
+      const result = await paymentCollection.aggregate(pipeline).toArray()
+      res.send(result)
+
+    })
+
+
+
 
     // instructors apis
 
