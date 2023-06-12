@@ -4,7 +4,7 @@ require("dotenv").config();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 // middleware
 app.use(cors());
 app.use(express.json());
@@ -65,21 +65,20 @@ async function run() {
       const token = jwt.sign(user, process.env.DB_ACCESS_TOKEN, {
         expiresIn: "1h",
       });
-    
+
       const query = { email: user.email };
       const existingUser = await usersCollection.findOne(query);
-    
+
       if (!existingUser) {
         return res.status(404).send({ message: "User not found" });
       }
-    
+
       const isAdmin = existingUser.role === "admin";
       const isInstructor = existingUser.role === "instructor";
       const isStudent = existingUser.role === "student";
-    
+
       res.send({ token, isAdmin, isInstructor, isStudent });
     });
-    
 
     // Warning: use verifyJWT before using verifyAdmin
     // const verifyAdmin = async (req, res, next) => {
@@ -120,19 +119,19 @@ async function run() {
     // check admin
 
     // user/admin/:email route
- 
-    app.get('/users/admin/:email', async (req, res) => {
+
+    app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
 
       // if (req.decoded.email !== email) {
       //   res.send({ admin: false })
       // }
 
-      const query = { email: email }
+      const query = { email: email };
       const user = await usersCollection.findOne(query);
-      const result = { admin: user?.role === 'admin' }
+      const result = { admin: user?.role === "admin" };
       res.send(result);
-    })
+    });
 
     // make user admin
     app.patch("/users/admin/:id", async (req, res) => {
@@ -150,19 +149,19 @@ async function run() {
     // Make a user an Instructor
 
     // user/instructor/:email route
-    app.get('/users/instructor/:email', async (req, res) => {
+    app.get("/users/instructor/:email", async (req, res) => {
       const email = req.params.email;
 
       // if (req.decoded.email !== email) {
       //   res.send({ instructor: false })
       // }
 
-      const query = { email: email }
+      const query = { email: email };
       const user = await usersCollection.findOne(query);
-      const result = { instructor: user?.role === 'instructor' }
+      const result = { instructor: user?.role === "instructor" };
       res.send(result);
-    })
-    
+    });
+
     // make instructor
     app.patch("/users/instructor/:id", async (req, res) => {
       const id = req.params.id;
@@ -228,96 +227,109 @@ async function run() {
 
     // app.get("/classes/:email", async (req, res) => {
     //   const email = req.query.email;
-    
+
     //   const query = email ? { email: email } : {};
     //   const results = await classCollection.find(query).toArray();
     // console.log(results);
     //   res.send(results);
     // });
-    
 
-     // create payment intent
-     app.post('/create-payment-intent',  async (req, res) => {
+    // create payment intent
+    app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100);
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
-        currency: 'usd',
-        payment_method_types: ['card']
+        currency: "usd",
+        payment_method_types: ["card"],
       });
 
       res.send({
-        clientSecret: paymentIntent.client_secret
-      })
-    })
-
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
 
     // payment related api
-    app.post('/payments',  async (req, res) => {
+    app.get("/payments", async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/payments", async (req, res) => {
       const payment = req.body;
       const insertResult = await paymentCollection.insertOne(payment);
 
-      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
-      const deleteResult = await cartCollection.deleteMany(query)
+      const cartItemId = new ObjectId(payment.cartItemId);
+      const deleteResult = await cartCollection.deleteMany({ _id: cartItemId });
 
-      res.send({ insertResult, deleteResult });
-    })
+      res.send({ insertResult });
+    });
 
-    app.get('/admin-stats',   async (req, res) => {
+    app.delete("/payments/:id", async (req, res) => {
+      const paymentId = req.params.id;
+
+      const deleteResult = await cartCollection.deleteOne({
+        _id: new ObjectId(paymentId),
+      });
+
+      if (deleteResult.deletedCount === 0) {
+        res.status(404).send({ message: "Payment not found" });
+      } else {
+        res.send({ message: "Payment deleted successfully" });
+      }
+    });
+
+    
+
+    app.get("/admin-stats", async (req, res) => {
       const users = await usersCollection.estimatedDocumentCount();
       const products = await cartCollection.estimatedDocumentCount();
       const orders = await paymentCollection.estimatedDocumentCount();
 
       const payments = await paymentCollection.find().toArray();
-      const revenue = payments.reduce( ( sum, payment) => sum + payment.price, 0)
+      const revenue = payments.reduce((sum, payment) => sum + payment.price, 0);
 
       res.send({
         revenue,
         users,
         products,
-        orders
-      })
-    })
+        orders,
+      });
+    });
 
-
-
-    app.get('/order-stats',   async(req, res) =>{
+    app.get("/order-stats", async (req, res) => {
       const pipeline = [
         {
           $lookup: {
-            from: 'menu',
-            localField: 'menuItems',
-            foreignField: '_id',
-            as: 'menuItemsData'
-          }
+            from: "menu",
+            localField: "menuItems",
+            foreignField: "_id",
+            as: "menuItemsData",
+          },
         },
         {
-          $unwind: '$menuItemsData'
+          $unwind: "$menuItemsData",
         },
         {
           $group: {
-            _id: '$menuItemsData.category',
+            _id: "$menuItemsData.category",
             count: { $sum: 1 },
-            total: { $sum: '$menuItemsData.price' }
-          }
+            total: { $sum: "$menuItemsData.price" },
+          },
         },
         {
           $project: {
-            category: '$_id',
+            category: "$_id",
             count: 1,
-            total: { $round: ['$total', 2] },
-            _id: 0
-          }
-        }
+            total: { $round: ["$total", 2] },
+            _id: 0,
+          },
+        },
       ];
 
-      const result = await paymentCollection.aggregate(pipeline).toArray()
-      res.send(result)
-
-    })
-
-
-
+      const result = await paymentCollection.aggregate(pipeline).toArray();
+      res.send(result);
+    });
 
     // instructors apis
 
@@ -349,119 +361,3 @@ run().catch(console.dir);
 app.listen(port, () => {
   console.log(`Language server on port ${port}`);
 });
-
-
-
-
-
-// jwt token apis
-// app.post("/jwt", (req, res) => {
-//   const user = req.body;
-//   const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
-//     expiresIn: "1h",
-//   });
-//   console.log(token);
-//   res.send({ token });
-// });
-
-// Warning: use verifyJWT before using verifyAdmin
-/*     const verifyAdmin = async (req, res, next) => {
-      const email = req.decoded.email;
-      const query = { email: email }
-      const user = await usersCollection.findOne(query);
-      if (user?.role !== 'admin') {
-        return res.status(403).send({ error: true, message: 'forbidden message' });
-      }
-      next();
-    } */
-
-/**
- * 0. do not show secure links to those who should not see the links
- * 1. use jwt token: verifyJWT
- * 2. use verifyAdmin middleware
- */
-
-// users related apis
-
-/*     app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
-      const result = await usersCollection.find().toArray();
-      res.send(result);
-    });
-
-    app.post('/users', async (req, res) => {
-      const user = req.body;
-      const query = { email: user.email }
-      const existingUser = await usersCollection.findOne(query);
-
-      if (existingUser) {
-        return res.send({ message: 'user already exists' })
-      }
-
-      const result = await usersCollection.insertOne(user);
-      res.send(result);
-    });
- */
-// security layer: verifyJWT
-// email same
-// check admin
-/*     app.get('/users/admin/:email', verifyJWT, async (req, res) => {
-      const email = req.params.email;
-
-      if (req.decoded.email !== email) {
-        res.send({ admin: false })
-      }
-
-      const query = { email: email }
-      const user = await usersCollection.findOne(query);
-      const result = { admin: user?.role === 'admin' }
-      res.send(result);
-    }) */
-
-/*     app.patch('/users/admin/:id', async (req, res) => {
-      const id = req.params.id;
-      console.log(id);
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: 'admin'
-        },
-      };
-
-      const result = await usersCollection.updateOne(filter, updateDoc);
-      res.send(result);
-
-    })
-
- */
-// cart collection apis
-
-/*         app.get('/carts', async (req, res) => {
-          const email = req.query.email;
-    
-          if (!email) {
-            res.send([]);
-          }
-    
-          const decodedEmail = req.decoded.email;
-          if (email !== decodedEmail) {
-            return res.status(403).send({ error: true, message: 'forbidden access' })
-          }
-    
-          const query = { email: email };
-          const result = await cartCollection.find(query).toArray();
-          res.send(result);
-        });
-    
-        app.get('/carts', async (req, res) => {
-          const item = req.body;
-          const result = await cartCollection.insertOne(item);
-          res.send(result);
-        })
-    
-        app.delete('/carts/:id', async (req, res) => {
-          const id = req.params.id;
-          const query = { _id: new ObjectId(id) };
-          const result = await cartCollection.deleteOne(query);
-          res.send(result);
-        })
-    */
