@@ -250,22 +250,49 @@ async function run() {
     });
 
     // payment related api
-    app.get("/payments", async (req, res) => {
-      const result = await paymentCollection.find().toArray();
-      res.send(result);
+    // app.get("/payments", async (req, res) => {
+    //   const result = await paymentCollection.find().toArray();
+    //   res.send(result);
+    // });
+
+    app.get('/users/myEnrol/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { email: email }; // Update the query to match the email field in your database
+        const data = await paymentCollection.find(query).toArray(); // Find all matching documents and convert to an array
+        res.send(data);
+      } catch (error) {
+        console.log(error);
+        res.status(500).send('Internal Server Error');
+      }
     });
+
+    app.get('/users/payments/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        console.log(email);
+        const query = { email: email }; 
+        const data = await paymentCollection.find(query).toArray(); 
+        res.send(data);
+      } catch (error) {
+        console.log(error);
+        res.status(500).send('Internal Server Error');
+      }
+    });
+
+
 
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const insertResult = await paymentCollection.insertOne(payment);
 
-      const cartItemId = new ObjectId(payment.cartItemId);
-      const deleteResult = await cartCollection.deleteMany({ _id: cartItemId });
+      // const cartItemId = new ObjectId(payment.cartItemId);
+      // const deleteResult = await cartCollection.deleteMany({ _id: cartItemId });
 
       res.send({ insertResult,deleteResult });
     });
 
-    app.delete("/payments/:id", async (req, res) => {
+    app.delete("/carts/:id", async (req, res) => {
       const paymentId = req.params.id;
 
       const deleteResult = await cartCollection.deleteOne({
