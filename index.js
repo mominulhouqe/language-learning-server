@@ -292,21 +292,6 @@ async function run() {
       res.send({ insertResult,deleteResult });
     });
 
-    app.delete("/carts/:id", async (req, res) => {
-      const paymentId = req.params.id;
-
-      const deleteResult = await cartCollection.deleteOne({
-        _id: new ObjectId(paymentId),
-      });
-
-      if (deleteResult.deletedCount === 0) {
-        res.status(404).send({ message: "Payment not found" });
-      } else {
-        res.send({ message: "Payment deleted successfully" });
-      }
-    });
-
-
 
     app.get("/admin-stats", async (req, res) => {
       const users = await usersCollection.estimatedDocumentCount();
