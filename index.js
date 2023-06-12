@@ -50,7 +50,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server (optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const usersCollection = client.db("language").collection("users");
     const cartCollection = client.db("language").collection("carts");
     const paymentCollection = client.db("language").collection("payments");
@@ -262,7 +262,7 @@ async function run() {
       const cartItemId = new ObjectId(payment.cartItemId);
       const deleteResult = await cartCollection.deleteMany({ _id: cartItemId });
 
-      res.send({ insertResult });
+      res.send({ insertResult,deleteResult });
     });
 
     app.delete("/payments/:id", async (req, res) => {
@@ -279,7 +279,7 @@ async function run() {
       }
     });
 
-    
+
 
     app.get("/admin-stats", async (req, res) => {
       const users = await usersCollection.estimatedDocumentCount();
