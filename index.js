@@ -73,27 +73,18 @@ async function run() {
         return res.status(404).send({ message: "User not found" });
       }
 
-      const isAdmin = existingUser.role === "admin";
-      const isInstructor = existingUser.role === "instructor";
-      const isStudent = existingUser.role === "student";
 
-      res.send({ token, isAdmin, isInstructor, isStudent });
+      res.send({ token });
     });
 
-    // Warning: use verifyJWT before using verifyAdmin
-    // const verifyAdmin = async (req, res, next) => {
-    //   const email = req.decoded.email;
-    //   const query = { email: email };
-    //   const user = await usersCollection.findOne(query);
-    //   if (user?.role !== "admin") {
-    //     return res
-    //       .status(403)
-    //       .send({ error: true, message: "forbidden message" });
-    //   }
-    //   next();
-    // };
+ 
 
     // users related apis
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
     app.get("/users", async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
@@ -114,19 +105,11 @@ async function run() {
       res.send(result);
     });
 
-    // security layer:
-    // check same email
-    // check admin
-
-    // user/admin/:email route
+    
 
     app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
-
-      // if (req.decoded.email !== email) {
-      //   res.send({ admin: false })
-      // }
-
+  
       const query = { email: email };
       const user = await usersCollection.findOne(query);
       const result = { admin: user?.role === "admin" };
@@ -162,6 +145,14 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/users/instructor-emails", async (req, res) => {
+      const query = { role: "instructor" };
+      const instructors = await usersCollection.find(query).toArray();
+
+       res.send(instructors);
+    });
+    
+
     // make instructor
     app.patch("/users/instructor/:id", async (req, res) => {
       const id = req.params.id;
@@ -183,12 +174,6 @@ async function run() {
         res.send([]);
       }
 
-      // const decodedEmail = req.decoded.email;
-      // if (email !== decodedEmail) {
-      //   return res
-      //     .status(403)
-      //     .send({ error: true, message: "forbidden access" });
-      // }
       const query = { email: email };
       const result = await cartCollection.find(query).toArray();
 
@@ -225,14 +210,6 @@ async function run() {
       res.send(result);
     });
 
-    // app.get("/classes/:email", async (req, res) => {
-    //   const email = req.query.email;
-
-    //   const query = email ? { email: email } : {};
-    //   const results = await classCollection.find(query).toArray();
-    // console.log(results);
-    //   res.send(results);
-    // });
 
     // create payment intent
     app.post("/create-payment-intent", async (req, res) => {
@@ -255,32 +232,30 @@ async function run() {
     //   res.send(result);
     // });
 
-    app.get('/users/myEnrol/:email', async (req, res) => {
+    app.get("/users/myEnrol/:email", async (req, res) => {
       try {
         const email = req.params.email;
-        const query = { email: email }; // Update the query to match the email field in your database
-        const data = await paymentCollection.find(query).toArray(); // Find all matching documents and convert to an array
-        res.send(data);
-      } catch (error) {
-        console.log(error);
-        res.status(500).send('Internal Server Error');
-      }
-    });
-
-    app.get('/users/payments/:email', async (req, res) => {
-      try {
-        const email = req.params.email;
-        console.log(email);
-        const query = { email: email }; 
+        const query = { email: email };
         const data = await paymentCollection.find(query).toArray(); 
         res.send(data);
       } catch (error) {
         console.log(error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).send("Internal Server Error");
       }
     });
 
-
+    app.get("/users/payments/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        console.log(email);
+        const query = { email: email };
+        const data = await paymentCollection.find(query).toArray();
+        res.send(data);
+      } catch (error) {
+        console.log(error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
 
     app.post("/payments", async (req, res) => {
       const payment = req.body;
@@ -289,9 +264,8 @@ async function run() {
       // const cartItemId = new ObjectId(payment.cartItemId);
       // const deleteResult = await cartCollection.deleteMany({ _id: cartItemId });
 
-      res.send({ insertResult,deleteResult });
+      res.send({ insertResult });
     });
-
 
     app.get("/admin-stats", async (req, res) => {
       const users = await usersCollection.estimatedDocumentCount();
@@ -350,6 +324,7 @@ async function run() {
       res.send(result);
     });
 
+   
     app.post("/instructors", async (req, res) => {
       const newClass = req.body;
       const result = await classCollection.insertOne(newClass);
